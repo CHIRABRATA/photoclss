@@ -5,6 +5,18 @@ from utils.detector import get_face_analyzer, get_body_detector, detect_and_draw
 from utils.cluster import cluster_face_embeddings
 from utils.organizer import build_output_folders
 from utils.zipper import create_zip_from_directory
+import time
+import streamlit as st
+from PIL import Image
+from utils.detector import (
+    get_face_analyzer, 
+    get_body_detector, 
+    detect_and_draw_faces, 
+    extract_embeddings_from_files
+)
+from utils.cluster import cluster_face_embeddings
+from utils.organizer import build_output_folders
+from utils.zipper import create_zip_from_directory
 
 def load_image(uploaded_file):
     try:
