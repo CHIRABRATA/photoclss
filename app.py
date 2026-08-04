@@ -1,6 +1,7 @@
+import time
 import streamlit as st
 from PIL import Image
-from utils.detector import get_face_analyzer, detect_and_draw_faces, extract_embeddings_from_files
+from utils.detector import get_face_analyzer, get_body_detector, detect_and_draw_faces, extract_embeddings_from_files
 from utils.cluster import cluster_face_embeddings
 from utils.organizer import build_output_folders
 from utils.zipper import create_zip_from_directory
@@ -40,63 +41,97 @@ def main():
         st.markdown("---")
         st.header("2. Face Detection Preview")
         
-        with st.spinner("Loading InsightFace detection model..."):
+        with st.spinner("Initializing Face & Body detection engines..."):
             analyzer = get_face_analyzer()
+            body_detector = get_body_detector()
 
         cols = st.columns(4)
         total_faces_found = 0
 
+        # Progress bar for image scanning
+        scan_bar = st.progress(0, text="Scanning uploaded images...")
+        num_files = len(uploaded_files)
+
         for idx, file in enumerate(uploaded_files):
+            # Update progress
+            scan_bar.progress((idx + 1) / num_files, text=f"Analyzing image {idx + 1} of {num_files}: `{file.name}`")
+            
             image, err = load_image(file)
             col = cols[idx % 4]
             
             if image is not None:
-                annotated_img, faces = detect_and_draw_faces(image, analyzer)
-                num_faces = len(faces)
-                total_faces_found += num_faces
-                
-                col.image(
-                    annotated_img, 
-                    caption=f"{file.name} ({num_faces} face{'s' if num_faces != 1 else ''})", 
-                    use_container_width=True
-                )
+                try:
+                    annotated_img, faces, bodies = detect_and_draw_faces(image, analyzer, body_detector)
+                    num_faces = len(faces)
+                    total_faces_found += num_faces
+                    
+                    col.image(
+                        annotated_img, 
+                        caption=f"{file.name} ({num_faces} face{'s' if num_faces != 1 else ''})", 
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    col.error(f"Error analyzing faces in `{file.name}`: {e}")
             else:
                 col.error(f"Failed to load `{file.name}`")
 
-        st.info(f"Total faces detected across all images: **{total_faces_found}**")
+        scan_bar.empty()  # Clear progress bar after completion
+        st.info(f"Scan complete! Detected **{total_faces_found}** face(s) across **{len(uploaded_files)}** photo(s).")
 
         st.markdown("---")
-        st.header("3. Face Clustering & Folder Generation")
+        st.header("3. Clustering Settings & Organization")
         
         col1, col2 = st.columns(2)
         with col1:
-            eps_val = st.slider("Clustering Distance Threshold (eps)", 0.20, 0.70, 0.50, 0.05)
+            eps_val = st.slider(
+                "Clustering Distance Threshold (eps)", 
+                0.20, 0.70, 0.50, 0.05,
+                help="Lower value = strict face matching. Higher value = tolerates different angles/lighting."
+            )
         with col2:
-            min_samples_val = st.number_input("Minimum Photos Per Person (min_samples)", 1, 10, 1)
+            min_samples_val = st.number_input(
+                "Minimum Photos Per Person (min_samples)", 
+                1, 10, 1,
+                help="Minimum face detections required to form a dedicated person folder."
+            )
 
-        if st.button("Organize Photos into Folders"):
-            with st.spinner("Extracting embeddings, clustering, and organizing disk folders..."):
+        if st.button("🚀 Process & Organize Photos", type="primary"):
+            progress_bar = st.progress(0, text="Starting pipeline...")
+            
+            try:
+                # Step A: Embeddings
+                progress_bar.progress(25, text="Extracting 512-D face embeddings...")
                 embeddings, metadata = extract_embeddings_from_files(uploaded_files, analyzer)
                 
                 if len(embeddings) > 0:
+                    # Step B: Clustering
+                    progress_bar.progress(60, text="Clustering faces with DBSCAN...")
                     labels = cluster_face_embeddings(embeddings, eps=eps_val, min_samples=min_samples_val)
+                    
+                    # Step C: Disk folder creation
+                    progress_bar.progress(85, text="Creating person directories on disk...")
                     output_path, group_count = build_output_folders(uploaded_files, metadata, labels)
                     
-                    st.success(f"Successfully generated folder hierarchy at `{output_path}`!")
+                    progress_bar.progress(100, text="Organization complete!")
+                    time.sleep(0.5)
+                    progress_bar.empty()
                     
-                    # Store generated path in session state
+                    st.toast("Photos organized successfully!", icon="🎉")
                     st.session_state["output_path"] = output_path
                 else:
+                    progress_bar.empty()
                     st.warning("No faces detected across uploaded images.")
+            except Exception as e:
+                progress_bar.empty()
+                st.error(f"An unexpected error occurred during processing: {e}")
 
-        # Show Output & Download section if folders have been created
+        # Section 4: Download & Summary Preview
         if "output_path" in st.session_state and st.session_state["output_path"].exists():
             output_path = st.session_state["output_path"]
             
             st.markdown("---")
             st.header("4. Download Organized ZIP")
             
-            # Prepare ZIP buffer
             zip_buffer = create_zip_from_directory(output_path)
             
             st.download_button(
@@ -107,7 +142,7 @@ def main():
                 type="primary"
             )
 
-            st.subheader("📁 Output Directory Structure:")
+            st.subheader("📁 Output Directory Summary:")
             for folder in sorted(output_path.iterdir()):
                 if folder.is_dir():
                     files_in_dir = list(folder.glob("*"))

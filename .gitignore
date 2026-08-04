@@ -230,3 +230,6 @@ temp/
 .vscode/
 
 *.zip
+ultralytics
+torch
+torchvision
