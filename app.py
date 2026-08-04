@@ -1,13 +1,6 @@
 import time
 import streamlit as st
 from PIL import Image
-from utils.detector import get_face_analyzer, get_body_detector, detect_and_draw_faces, extract_embeddings_from_files
-from utils.cluster import cluster_face_embeddings
-from utils.organizer import build_output_folders
-from utils.zipper import create_zip_from_directory
-import time
-import streamlit as st
-from PIL import Image
 from utils.detector import (
     get_face_analyzer, 
     get_body_detector, 
@@ -27,13 +20,19 @@ GRID_HEIGHT = 560
  
 def load_image(uploaded_file):
     try:
-        image = Image.open(uploaded_file)
-        image.verify()
+        with Image.open(uploaded_file) as image:
+            image.verify()
         uploaded_file.seek(0)
-        image = Image.open(uploaded_file)
-        return image, None
+        with Image.open(uploaded_file) as image:
+            return image.convert("RGB").copy(), None
     except Exception as e:
         return None, str(e)
+
+
+def load_image_from_path(image_path):
+    """Load a PIL image and detach pixel data from the on-disk file handle."""
+    with Image.open(image_path) as img:
+        return img.convert("RGB").copy()
  
  
 def render_photo_grid(items, cols_count=4, height=None):
@@ -202,7 +201,7 @@ def main():
             for folder in folders:
                 files_in_dir = sorted(folder.glob("*"))
                 with st.expander(f"📂 {folder.name} ({len(files_in_dir)} image(s))", expanded=False):
-                    thumb_items = [(Image.open(p), p.name, True) for p in files_in_dir]
+                    thumb_items = [(load_image_from_path(p), p.name, True) for p in files_in_dir]
                     # Same adaptive-scroll logic applied to each folder
                     if len(thumb_items) > SCROLL_THRESHOLD:
                         render_photo_grid(thumb_items, cols_count=4, height=420)
