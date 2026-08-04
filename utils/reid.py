@@ -13,6 +13,11 @@ def get_reid_model():
     model.eval()
     return model
 
+
+def get_reid_extractor():
+    """Backward-compatible API expected by utils.detector."""
+    return get_reid_model()
+
 # Image preprocessing transform for ReID input
 reid_transform = T.Compose([
     T.Resize((256, 128)),
