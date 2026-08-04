@@ -42,7 +42,7 @@ def detect_and_draw_faces(pil_image, face_analyzer, body_detector=None):
         results = body_detector(img_array, verbose=False)
         for r in results:
             for box in r.boxes:
-                if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.35:
+                if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.20:
                     body_boxes.append(box.xyxy[0].cpu().numpy().astype(int))
 
     annotated_bgr = img_bgr.copy()
@@ -85,7 +85,7 @@ def extract_embeddings_from_files(uploaded_files, face_analyzer, body_detector=N
                 results = body_detector(img_array, verbose=False)
                 for r in results:
                     for box in r.boxes:
-                        if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.35:
+                        if int(box.cls[0]) == 0 and float(box.conf[0]) > 0.20:
                             body_boxes.append(box.xyxy[0].cpu().numpy().astype(int))
 
             # Case A: Faces detected

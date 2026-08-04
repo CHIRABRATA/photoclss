@@ -37,6 +37,7 @@ def build_output_folders(uploaded_files, metadata_list, labels, output_base="out
 
     # 1. Map each file object by name
     file_map = {f.name: f for f in uploaded_files}
+    processed_filenames = set()
     
     # 2. Track which files belong to which person cluster
     cluster_files = {}  # {folder_name: set_of_filenames}
@@ -44,6 +45,7 @@ def build_output_folders(uploaded_files, metadata_list, labels, output_base="out
 
     for label, meta in zip(labels, metadata_list):
         fname = meta["file_name"]
+        processed_filenames.add(fname)
         file_face_counts[fname] = file_face_counts.get(fname, 0) + 1
         
         folder_name = f"Person_{label + 1}" if label >= 0 else "Single_Unclustered"
@@ -74,5 +76,12 @@ def build_output_folders(uploaded_files, metadata_list, labels, output_base="out
             group_dir.mkdir(parents=True, exist_ok=True)
             save_image_to_dir(file_map[fname], group_dir / fname)
             group_count += 1
+
+    # 5. Save images with no face/body embeddings to a catch-all folder
+    unclassified_dir = base_path / "Unclassified_Photos"
+    for fname, file_obj in file_map.items():
+        if fname not in processed_filenames:
+            unclassified_dir.mkdir(parents=True, exist_ok=True)
+            save_image_to_dir(file_obj, unclassified_dir / fname)
 
     return base_path, group_count
