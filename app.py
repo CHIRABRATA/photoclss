@@ -1,3 +1,4 @@
+import gc
 import time
 import streamlit as st
 from PIL import Image
@@ -49,7 +50,7 @@ def render_photo_grid(items, cols_count=4, height=None):
         for idx, (img, caption, ok) in enumerate(items):
             col = cols[idx % cols_count]
             if ok:
-                col.image(img, caption=caption, use_container_width=True)
+                col.image(img, caption=caption, width="stretch")
             else:
                 col.error(caption)
  
@@ -177,6 +178,8 @@ def main():
             except Exception as e:
                 progress_bar.empty()
                 st.error(f"An unexpected error occurred during processing: {e}")
+
+            gc.collect()
  
         if "output_path" in st.session_state and st.session_state["output_path"].exists():
             output_path = st.session_state["output_path"]
@@ -207,6 +210,8 @@ def main():
                         render_photo_grid(thumb_items, cols_count=4, height=420)
                     else:
                         render_photo_grid(thumb_items, cols_count=4, height=None)
+
+            gc.collect()
  
     else:
         st.info("Please upload your photos above to get started.")
