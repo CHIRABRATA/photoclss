@@ -1,5 +1,10 @@
 import gc
 import time
+import asyncio
+
+if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import streamlit as st
 from PIL import Image
 from utils.detector import (

@@ -9,7 +9,7 @@ from utils.reid import get_reid_extractor, extract_body_embedding
 
 
 @st.cache_resource
-def get_face_analyzer():
+def load_insightface_model():
     """
     Initialize and cache InsightFace FaceAnalysis.
     """
@@ -19,11 +19,16 @@ def get_face_analyzer():
 
 
 @st.cache_resource
-def get_body_detector():
+def load_yolo_model():
     """
     Initialize and cache YOLOv8 for human body detection (front & back views).
     """
     return YOLO("yolov8n.pt")
+
+
+# Backward-compatible aliases used by app.py.
+get_face_analyzer = load_insightface_model
+get_body_detector = load_yolo_model
 
 
 def detect_and_draw_faces(pil_image, face_analyzer, body_detector=None):
