@@ -26,6 +26,7 @@ GRID_HEIGHT = 560
  
 def load_image(uploaded_file):
     try:
+        uploaded_file.seek(0)
         with Image.open(uploaded_file) as image:
             image.verify()
         uploaded_file.seek(0)
